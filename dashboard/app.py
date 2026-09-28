@@ -2,8 +2,11 @@ import streamlit as st
 import pandas as pd
 import joblib
 import altair as alt
+from pathlib import Path
 
 st.set_page_config(page_title="EduPro Predictor", page_icon="🎓", layout="wide")
+
+BASE_DIR = Path(__file__).parent
 
 # ==================== STYLING ====================
 st.markdown("""
@@ -25,13 +28,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ==================== LOAD MODELS & DATA ====================
-model_enrollment = joblib.load('model_enrollment.pkl')
-model_revenue = joblib.load('model_revenue.pkl')
-feature_columns = joblib.load('feature_columns.pkl')
-importance_df = pd.read_csv('feature_importance.csv')
-importance_df.columns = ['Feature', 'Importance']
-category_df = pd.read_csv('category_summary.csv')
+# ==================== LOAD MODELS & DATA (cached) ====================
+@st.cache_resource
+def load_models():
+    m1 = joblib.load(BASE_DIR / 'model_enrollment.pkl')
+    m2 = joblib.load(BASE_DIR / 'model_revenue.pkl')
+    cols = joblib.load(BASE_DIR / 'feature_columns.pkl')
+    return m1, m2, cols
+
+@st.cache_data
+def load_data():
+    imp = pd.read_csv(BASE_DIR / 'feature_importance.csv')
+    imp.columns = ['Feature', 'Importance']
+    cat = pd.read_csv(BASE_DIR / 'category_summary.csv')
+    return imp, cat
+
+model_enrollment, model_revenue, feature_columns = load_models()
+importance_df, category_df = load_data()
 
 # ==================== HEADER ====================
 st.markdown("""
@@ -98,7 +111,7 @@ st.bar_chart(importance_df.set_index('Feature'), color="#6C5CE7")
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
-# ==================== CATEGORY COMPARISON (reacts to your sidebar selection) ====================
+# ==================== CATEGORY COMPARISON ====================
 st.markdown('<p class="section-label">🏆 Category-Level Demand Comparison</p>', unsafe_allow_html=True)
 st.markdown(f'<p class="section-desc">Your selected category (<b>{category}</b>) is highlighted below.</p>', unsafe_allow_html=True)
 
